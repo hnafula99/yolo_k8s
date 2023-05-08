@@ -1,16 +1,18 @@
 version: "3.8"
 
 services:
-    mongodb:
-        image: mongo
+    client:
+        image: client
         restart: always
-        container_name: mongodb
         ports:
-            - 27017:27017
+            - "3000:3000"
+        volumes:
+            - /client/node_modules
+        networks:
+            webappnetwork   
 
     backend:
-            image: hannahnafula/yolo:18.2.0
-            build: ./backend
+            image: server
             restart: always
             ports:
             - "8080:8080"
@@ -18,14 +20,18 @@ services:
             - /backend/node_modules
             depends_on:
             - mongodb
+            networks:
+             webappnetwork
 
-
-    client:
-        image: hannahnafula/yolo:16.13.2
-        build: ./client
+    mongodb:
+        image: mongo
         restart: always
+        container_name: mongodb
         ports:
-            - "3000:3000"
-        volumes:
-            - /client/node_modules
-    
+            - 27017:27017
+        networks:
+            - webappnetwork     
+                
+    networks:
+            webappnetwork:
+                 driver: bridge         
