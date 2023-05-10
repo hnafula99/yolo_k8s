@@ -13,12 +13,15 @@ services:
             build: ./backend
             restart: always
             ports:
-            - "8080:8080"
+            - "5000:5000"
             volumes:
             - /backend/node_modules
+            environment:
+             PORT: 5000
+             MONGODB_URI: mongodb://mongodb:27017
+             DB_NAME: yolomy
             depends_on:
             - mongodb        
-
     client:
         image: hannahnafula/yolo:16.13.2
         build: ./client
