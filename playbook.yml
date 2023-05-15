@@ -1,0 +1,48 @@
+---
+- hosts: all
+  gather_facts: true
+  become: yes
+  vars:
+    MONGODB_VERSION: "6"
+    GIT_VERSION: "2"   
+  vars_files: 
+     docker-compose.yaml
+  tasks:
+    - name: Update repository
+      apt_repository:
+       repo: 'ppa:git-core/ppa'
+       state: present
+    - name: Install git
+      apt:
+        name: git
+        state: present
+        update_cache: yes
+
+    - name: Import the public key used by the package management system
+      apt_key:
+        url: 'https://www.mongodb.org/static/pgp/server-4.2.asc'
+        state: present #keyserver=hkp://keyserver.ubuntu.com:80 id=EA312927 state=present
+    - name: Add MongoDB repository
+      apt_repository:
+       filename: '/etc/apt/sources.list.d/mongodb-org-4.2.list'
+       repo: 'deb https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.2 multiverse'
+ #'deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen'
+       state: present
+       update_cache: yes
+    - name: install mongodb
+      apt:
+       pkg: mongodb-org
+       state: present
+       update_cache: yes 
+    - name: start mongodb
+      service:
+        name: mongod
+        state: started
+    
+    - name: Creates 3 containers, using the variables we defined in the vars file
+      docker_container:
+        name: "{{container_name }}{{item}}"
+        image: "{{container_image }}"
+        command: "{{commande_to_run }}"
+        state: present
+      with_sequence: count={{no_containers}}
