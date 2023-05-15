@@ -1,48 +1,107 @@
 ---
-- hosts: all
-  gather_facts: true
-  become: yes
-  vars:
+- hosts: all #set playbook to run all hosts
+  gather_facts: true 
+  become: yes #Tells Ansible to run all tasks as the root user.
+  vars: # Sets variables
     MONGODB_VERSION: "6"
-    GIT_VERSION: "2"   
-  vars_files: 
-     docker-compose.yaml
-  tasks:
-    - name: Update repository
-      apt_repository:
-       repo: 'ppa:git-core/ppa'
-       state: present
-    - name: Install git
-      apt:
-        name: git
+    GIT_VERSION: "2"
+    container_count: 3
+    default_container_name: docker
+    default_container_image: ubuntu
+    default_container_command: sleep 1d
+    
+  #Define tasks ansible will take action upon
+  tasks: 
+
+     #Install git
+     - name: Update repository
+       apt_repository:
+        repo: 'ppa:git-core/ppa'
+        state: present
+     - name: Install git
+       apt:
+         name: git
+         state: present
+         update_cache: yes   
+     - name: Install aptitude
+       apt:
+         name: aptitude
+         state: latest
+         update_cache: true
+
+      #install mongo
+     - name: Import the public key used by the package management system
+       apt_key:
+         url: 'https://www.mongodb.org/static/pgp/server-4.2.asc'
+         state: present
+     - name: Add MongoDB repository
+       apt_repository:
+        filename: '/etc/apt/sources.list.d/mongodb-org-4.2.list'
+        repo: 'deb https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.2 multiverse'
         state: present
         update_cache: yes
-
-    - name: Import the public key used by the package management system
-      apt_key:
-        url: 'https://www.mongodb.org/static/pgp/server-4.2.asc'
-        state: present #keyserver=hkp://keyserver.ubuntu.com:80 id=EA312927 state=present
-    - name: Add MongoDB repository
-      apt_repository:
-       filename: '/etc/apt/sources.list.d/mongodb-org-4.2.list'
-       repo: 'deb https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.2 multiverse'
- #'deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen'
-       state: present
-       update_cache: yes
-    - name: install mongodb
-      apt:
-       pkg: mongodb-org
-       state: present
-       update_cache: yes 
-    - name: start mongodb
-      service:
-        name: mongod
-        state: started
-    
-    - name: Creates 3 containers, using the variables we defined in the vars file
-      docker_container:
-        name: "{{container_name }}{{item}}"
-        image: "{{container_image }}"
-        command: "{{commande_to_run }}"
+     - name: install mongodb
+       apt:
+        pkg: mongodb-org
         state: present
-      with_sequence: count={{no_containers}}
+        update_cache: yes 
+     - name: start mongodb
+       service:
+         name: mongod
+         state: started   
+
+    # Install packages essential for running a developer environment on a Debian-based system.
+     - name: Install required system packages
+       apt:
+         pkg:
+           - apt-transport-https
+           - ca-certificates
+           - curl
+           - software-properties-common
+           - python3-pip
+           - virtualenv
+           - python3-setuptools
+         state: latest
+         update_cache: true
+
+    # Sets key used to verify your install packages are from an authorized source.
+     - name: Add Docker GPG apt Key
+       apt_key:
+         url: https://download.docker.com/linux/ubuntu/gpg
+         state: present
+
+    # Sets repository containing packages needed to install
+    # and run Docker on a Debian-based system.
+     - name: Add Docker Repository
+       apt_repository:
+         repo: deb https://download.docker.com/linux/ubuntu focal stable
+         state: present
+
+    # Installs Docker community edition
+     - name: Update apt and install docker-ce
+       apt:
+         name: docker-ce
+         state: latest
+         update_cache: true
+
+    # Installs Docker Module for Python.
+    # Allows you to manage Docker containers from within Ansible playbooks.
+     - name: Install Docker Module for Python
+       pip:
+         name: docker
+
+    # Pulls the default docker image (Ubuntu)
+     - name: Pull default Docker image
+       docker_image:
+         name: "{{ default_container_image }}"
+         source: pull
+
+    # Create three containers on each managed host using default image and command.
+     - name: Create default containers
+       community.docker.docker_container:
+         name: "{{ default_container_name }}{{ item }}"
+         image: "{{ default_container_image }}"
+         command: "{{ default_container_command }}"
+         state: present
+      # Tells Ansible to repeat tasks for each item in the container_count variable
+       with_sequence: count={{ container_count }}
