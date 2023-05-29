@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: yolo_app
+spec:
+  selector:
+    app: yolo_app #selects the Pods to expose 
+  ports: #the Service listens for requests on port 80 and forwards them to port 3000 of the target Pods
+    - port: 80
+      targetPort: 3000
+  type: LoadBalancer #makes the exposed Pods accessible from outside the cluster
+---
+apiVersion: apps/v1 #the version of resource type
+kind: Deployment #the type of resource
+metadata: #the name of the specific resource
+  name: yolo
+spec:
+  replicas: 1 # number of replicas of the container
+  selector: #field selects those Pods with an app: yolo_app label to belong to this Deployment resource
+    matchLabels:
+      app: yolo_app
+  template: #defines a label for the Pods that wrap your Knote container
+    metadata:
+      labels:
+        app: yolo_app
+    spec:
+      containers:
+        - name: app #A name for the container
+          image: yolo # name of the Docker image
+          ports:
+            - containerPort: 3000 #port that the container listens on
+          env:
+            - name: MONGO_URL
+              value: mongodb://mongo:27017/dev
+          imagePullPolicy: Always
